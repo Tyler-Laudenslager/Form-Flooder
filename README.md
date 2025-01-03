@@ -47,7 +47,7 @@ to the specified server endpoint.</p>
 </ol>
 
 <h2 id="data-file-format">Data File Format</h2>
-<p>Your data file (by default <code>info.txt</code>) is divided into sections marked by lines starting with <code>#:</p>
+<p>Your data file (by default <code>info.txt</code>) is divided into sections marked by lines starting with <code>#</code>:</p>
 <ol>
   <li><strong>Required Info</strong>
     <ul>
@@ -64,7 +64,6 @@ to the specified server endpoint.</p>
       <li>One CSV line per set of form values.</li>
     </ul>
   </li>
-</code>
 </ol>
 
 <p>An example file might look like this:</p>
