@@ -7,7 +7,7 @@
 It reads essential configuration (URL, HTTP method, form field names, and field values) from a custom-formatted data file, then sends concurrent requests 
 to the specified server endpoint.</p>
 
-<a href="https://tyler-laudenslager.github.io/form-flooder/">Form Flooder Documentation</a>
+<a href="https://tyler-laudenslager.github.io/Form-Flooder/">Form Flooder Documentation</a>
 
 <h2 id="license">License</h2>
 <p>This project is distributed under the MIT License—see the <code>LICENSE</code> file for details.</p>
