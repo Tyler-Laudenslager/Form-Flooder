@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Form Flooder Documentation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      line-height: 1.6;
+    }
+    code, pre {
+      background-color: #f8f8f8;
+      padding: 4px;
+      border-radius: 4px;
+    }
+    h1, h2, h3 {
+      margin-top: 1.4em;
+    }
+    h1 {
+      margin-bottom: 0.5em;
+    }
+    .toc ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    .toc ul li {
+      margin: 0.25em 0;
+    }
+  </style>
+</head>
+<body>
+
+<h1 id="form-flooder">Form Flooder</h1>
+<p><strong>Form Flooder</strong> is a command-line tool written in Go that automates form submissions using dynamically specified fields and values. 
+It reads essential configuration (URL, HTTP method, form field names, and field values) from a custom-formatted data file, then sends concurrent requests 
+to the specified server endpoint.</p>
+
+<hr>
+
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <ul>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#installation">Installation</a></li>
+    <li><a href="#data-file-format">Data File Format</a></li>
+    <li><a href="#usage">Usage</a></li>
+    <li><a href="#command-line-flags">Command-Line Flags</a></li>
+    <li><a href="#how-it-works">How It Works</a></li>
+    <li><a href="#code-structure">Code Structure</a></li>
+    <li><a href="#example">Example</a></li>
+    <li><a href="#troubleshooting">Troubleshooting</a></li>
+    <li><a href="#license">License</a></li>
+  </ul>
+</div>
+
+<hr>
+
+<h2 id="overview">Overview</h2>
+<ol>
+  <li><strong>Automates Form Submissions</strong>: Sends requests with form data (e.g., <code>username</code>, <code>password</code>) to a specified URL.</li>
+  <li><strong>Custom Data File</strong>: Reads URL, HTTP method, form fields, and multiple rows of field values from a single file.</li>
+  <li><strong>Concurrent Requests</strong>: Utilizes worker goroutines to send multiple requests in parallel.</li>
+  <li><strong>Result Metrics</strong>: Reports the number of processed packets, successful requests, and failure rate at the end.</li>
+</ol>
+
+<h2 id="installation">Installation</h2>
+<ol>
+  <li><strong>Clone or Download</strong> this repository.</li>
+  <li><strong>Install Go</strong> (version 1.18+ recommended).</li>
+  <li><strong>Build</strong> the tool:
+    <pre><code>go build -o form_flooder</code></pre>
+    Or simply run it with:
+    <pre><code>go run main.go [flags]</code></pre>
+  </li>
+</ol>
+
+<h2 id="data-file-format">Data File Format</h2>
+<p>Your data file (by default <code>info.txt</code>) is divided into sections marked by lines starting with <code>#</code>:</p>
+<ol>
+  <li><strong>Required Info</strong>
+    <ul>
+      <li>Must contain a <code>url</code> and <code>method</code> in the form of <code>key: value</code>.</li>
+    </ul>
+  </li>
+  <li><strong>Form Names</strong>
+    <ul>
+      <li>A single CSV line containing form field names (headers).</li>
+    </ul>
+  </li>
+  <li><strong>Form Values</strong>
+    <ul>
+      <li>One CSV line per set of form values.</li>
+    </ul>
+  </li>
+</ol>
+
+<p>An example file might look like this:</p>
+<pre><code># Required Info
+url: http://localhost:8080/login
+method: POST
+
+# Form Names
+username,password
+
+# Form Values
+alice,secret123
+bob,fatstacks
+charlie,hunter2
+</code></pre>
+
+<p><strong>Important</strong>:</p>
+<ul>
+  <li>The <em>Form Names</em> line sets the form fields (e.g., <code>username</code> and <code>password</code>).</li>
+  <li>Each subsequent line under <em>Form Values</em> should match the number of fields in <em>Form Names</em>.</li>
+</ul>
+
+<h2 id="usage">Usage</h2>
+<ol>
+  <li><strong>Prepare Your Data File</strong>
+    <p>Ensure it follows the <a href="#data-file-format">Data File Format</a> above.</p>
+  </li>
+  <li><strong>Run the Program</strong>
+    <pre><code>./form_flooder -file ./info.txt -workers 10
+</code></pre>
+    Here, <code>./info.txt</code> is your data file and <code>-workers 10</code> sets the number of concurrent requests.
+  </li>
+  <li><strong>Review the Summary</strong>
+    <p>After execution, you’ll see a summary including total processed, successes, failures, and success percentage.</p>
+  </li>
+</ol>
+
+<h2 id="command-line-flags">Command-Line Flags</h2>
+<table border="1" cellpadding="5" cellspacing="0">
+  <thead>
+    <tr>
+      <th>Flag</th>
+      <th>Description</th>
+      <th>Default</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>-file</code></td>
+      <td>Path to the data file.</td>
+      <td><code>./info.txt</code></td>
+    </tr>
+    <tr>
+      <td><code>-workers</code></td>
+      <td>Number of concurrent worker goroutines to process form submissions.</td>
+      <td><code>5</code></td>
+    </tr>
+    <tr>
+      <td><code>-help</code></td>
+      <td>Display help and usage information.</td>
+      <td><code>false</code></td>
+    </tr>
+  </tbody>
+</table>
+<p><strong>Example:</strong></p>
+<pre><code>go run main.go -file mydata.txt -workers 20
+</code></pre>
+
+<h2 id="how-it-works">How It Works</h2>
+<ol>
+  <li><strong>Parse the Data File</strong><br>
+    The program uses <code>parseDataFile</code> to read your <code>info.txt</code> line by line:
+    <ul>
+      <li><em>Required Info</em>: Extracts the <code>url</code> and HTTP <code>method</code>.</li>
+      <li><em>Form Names</em>: Sets up the headers for each form field.</li>
+      <li><em>Form Values</em>: Creates a map (<code>DataPacket</code>) for each line of values, matching the headers.</li>
+    </ul>
+  </li>
+  <li><strong>Set Up Workers</strong><br>
+    A channel <code>jobs</code> is filled with all <code>DataPacket</code> structs from the data file.
+    Multiple worker goroutines (<code>-workers</code>) read from <code>jobs</code> and send HTTP requests 
+    to the provided URL.
+  </li>
+  <li><strong>Track Results</strong><br>
+    Each worker uses atomic counters to safely track successes and failures. 
+    At the end, the tool calculates and prints a success percentage.
+  </li>
+</ol>
+
+<h2 id="code-structure">Code Structure</h2>
+<pre><code>.
+├── main.go
+└── info.txt    ← Default data file
+</code></pre>
+
+<h3><code>main.go</code></h3>
+<ul>
+  <li><strong>Structs</strong>
+    <ul>
+      <li><code>DataPacket</code> (map of form-field key-value pairs)</li>
+      <li><code>Config</code> (stores URL, method, headers, and data packets)</li>
+    </ul>
+  </li>
+  <li><strong>Functions</strong>
+    <ul>
+      <li><code>main()</code>: Entry point; parses flags, reads data file, starts workers, prints summary.</li>
+      <li><code>parseDataFile()</code>: Reads and interprets the data file, populating a <code>Config</code> struct.</li>
+      <li><code>parseCSVLine()</code>: Parses CSV lines into slices of strings.</li>
+      <li><code>worker()</code>: Processes <code>DataPacket</code> jobs, sends HTTP requests, tracks success/failure.</li>
+      <li><code>sendRequest()</code>: Builds and sends the HTTP request, returning the response or error.</li>
+      <li><code>handleResponse()</code>: Efficiently discards/reads the response body, avoiding memory bloat.</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="example">Example</h2>
+<h3>1. Data File (<code>info.txt</code>)</h3>
+<pre><code># Required Info
+url: http://localhost:8080/login
+method: POST
+
+# Form Names
+username,password
+
+# Form Values
+alice,secret123
+bob,fatstacks
+charlie,hunter2
+</code></pre>
+
+<h3>2. Run the Program</h3>
+<pre><code>go run main.go -file ./info.txt -workers 3
+</code></pre>
+
+<h3>3. Sample Output</h3>
+<pre><code>--- Form Flood v1.0 Summary ---
+URL: http://localhost:8080/login
+HTTP Method: POST
+Data File: ./info.txt
+
+Packets Parsed: 3
+Packets Processed: 3
+Successful Requests: 3
+Failed Requests: 0
+Success Percentage: 100.00%
+</code></pre>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+<ol>
+  <li><strong>Client.Timeout exceeded while awaiting headers</strong><br>
+    The target server is unresponsive or takes too long to respond.
+    <ul>
+      <li><em>Fix</em>: Ensure the server is running and reachable. Increase the timeout in <code>http.Client</code> if needed.</li>
+    </ul>
+  </li>
+  <li><strong>URL or Method Not Found</strong><br>
+    Make sure your data file’s <em>Required Info</em> section has valid lines like <code>url: ...</code> and <code>method: ...</code>.
+  </li>
+  <li><strong>Form Name / Value Mismatch</strong><br>
+    Ensure the <em>Form Names</em> section exactly matches the number of columns in each line under <em>Form Values</em>.
+  </li>
+  <li><strong>No Data Packets Found</strong><br>
+    Verify the lines under <em>Form Values</em> are correct and not commented out.
+  </li>
+</ol>
+
+<h2 id="license">License</h2>
+<p>This project is distributed under the MIT License—see the <code>LICENSE</code> file for details.</p>
+
+</body>
+</html>

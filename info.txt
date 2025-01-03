@@ -1,0 +1,9 @@
+# Required Info
+url: http://localhost:8080/login
+method: POST
+# Form Names
+username,password
+# Form Values
+bob,fatstacks
+lucy,rosepetals
+joe,nonsense
